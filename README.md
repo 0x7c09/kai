@@ -36,4 +36,4 @@ src-tauri/target/release/bundle/macos/kai.app
 - Double-click: jump
 - Right-click: disabled
 - `Esc` or `q`: play the failed animation, then quit
-- `1`-`5`: switch test states
+- `1`-`9`: switch test states in atlas order

@@ -2,8 +2,8 @@ use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, PhysicalPosition};
 
-const DEFAULT_PET_JSON: &str = include_str!("../resources/pets/melina/pet.json");
-const DEFAULT_SPRITESHEET: &[u8] = include_bytes!("../resources/pets/melina/spritesheet.webp");
+const DEFAULT_PET_JSON: &str = include_str!("../resources/pets/photoboy/pet.json");
+const DEFAULT_SPRITESHEET: &[u8] = include_bytes!("../resources/pets/photoboy/spritesheet.webp");
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

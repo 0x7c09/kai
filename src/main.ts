@@ -22,7 +22,6 @@ const FRAME_WIDTH = 192;
 const FRAME_HEIGHT = 208;
 const MAX_FRAME_COUNT = 8;
 const FRAME_MS = 140;
-const EXIT_ANIMATION_MS = 900;
 const STATE_ROWS = {
   idle: 0,
   "running-right": 1,
@@ -36,6 +35,17 @@ const STATE_ROWS = {
 } as const;
 
 type PetState = keyof typeof STATE_ROWS;
+const DEBUG_STATE_BY_KEY: Record<string, PetState> = {
+  "1": "idle",
+  "2": "running-right",
+  "3": "running-left",
+  "4": "waving",
+  "5": "jumping",
+  "6": "failed",
+  "7": "waiting",
+  "8": "running",
+  "9": "review"
+};
 
 function requiredNode<T extends Element>(selector: string) {
   const node = document.querySelector<T>(selector);
@@ -70,7 +80,7 @@ let frame = 0;
 let lastFrameAt = 0;
 let temporaryStateUntil = 0;
 let animationRequest = 0;
-let quitTimer: number | null = null;
+let oneShotAnimation: { state: PetState; onComplete: () => void } | null = null;
 let pendingDragPointerId: number | null = null;
 let drag: {
   pointerId: number;
@@ -95,24 +105,32 @@ function setState(nextState: PetState, durationMs = 0) {
   if (state === nextState && durationMs === 0) {
     return;
   }
+  oneShotAnimation = null;
   state = nextState;
   frame = 0;
+  lastFrameAt = performance.now();
   temporaryStateUntil = durationMs > 0 ? performance.now() + durationMs : 0;
 }
 
+function playStateOnce(nextState: PetState, onComplete: () => void) {
+  oneShotAnimation = { state: nextState, onComplete };
+  state = nextState;
+  frame = 0;
+  lastFrameAt = performance.now();
+  temporaryStateUntil = 0;
+}
+
 function requestQuit() {
-  if (quitTimer !== null) {
+  if (oneShotAnimation !== null) {
     return;
   }
 
   drag = null;
   pendingDragPointerId = null;
-  suppressClickUntil = performance.now() + EXIT_ANIMATION_MS;
-  setState("failed");
-
-  quitTimer = window.setTimeout(() => {
+  suppressClickUntil = Number.POSITIVE_INFINITY;
+  playStateOnce("failed", () => {
     void invoke<void>("quit_app");
-  }, EXIT_ANIMATION_MS);
+  });
 }
 
 function draw(now: number) {
@@ -131,7 +149,17 @@ function draw(now: number) {
   const visibleFrames = visibleFramesByRow.get(row) ?? [0];
 
   if (now - lastFrameAt >= FRAME_MS) {
-    frame = (frame + 1) % visibleFrames.length;
+    if (oneShotAnimation?.state === state) {
+      if (frame >= visibleFrames.length - 1) {
+        const onComplete = oneShotAnimation.onComplete;
+        oneShotAnimation = null;
+        onComplete();
+      } else {
+        frame += 1;
+      }
+    } else {
+      frame = (frame + 1) % visibleFrames.length;
+    }
     lastFrameAt = now;
   }
 
@@ -325,24 +353,10 @@ window.addEventListener("keydown", (event) => {
     requestQuit();
     return;
   }
-  if (event.key === "1") {
-    setState("idle");
-    return;
-  }
-  if (event.key === "2") {
-    setState("running");
-    return;
-  }
-  if (event.key === "3") {
-    setState("waiting");
-    return;
-  }
-  if (event.key === "4") {
-    setState("review");
-    return;
-  }
-  if (event.key === "5") {
-    setState("failed");
+
+  const debugState = DEBUG_STATE_BY_KEY[event.key];
+  if (debugState) {
+    setState(debugState);
   }
 });
 
