@@ -1,0 +1,24 @@
+[package]
+name = "kai"
+version = "0.1.0"
+description = "A tiny transparent desktop pet for hatch-pet sprites."
+authors = ["0x7c09 <kkhjing@outlook.com>"]
+edition = "2021"
+build = "build.rs"
+
+[lib]
+name = "kai_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "kai"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["macos-private-api"] }
