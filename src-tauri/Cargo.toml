@@ -1,7 +1,7 @@
 [package]
 name = "kai"
 version = "0.1.0"
-description = "A tiny transparent desktop pet for hatch-pet sprites."
+description = "A tiny transparent desktop pet with bundled local sprites."
 authors = ["0x7c09 <kkhjing@outlook.com>"]
 edition = "2021"
 build = "build.rs"

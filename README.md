@@ -1,14 +1,14 @@
 # kai
 
-A minimal Tauri desktop pet that reuses hatch-pet packages from:
+A minimal Tauri desktop pet with bundled local pet assets.
 
 ```text
-${CODEX_HOME:-$HOME/.codex}/pets/<pet-id>/
+src-tauri/resources/pets/<pet-id>/
   pet.json
   spritesheet.webp
 ```
 
-The current MVP opens a transparent, borderless, always-on-top window and plays the first available hatch-pet package.
+The current MVP opens a transparent, borderless, always-on-top window and plays the bundled pet package.
 
 ## Development
 
