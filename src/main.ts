@@ -13,6 +13,11 @@ type PetAsset = {
   image_data_url: string;
 };
 
+type WindowPosition = {
+  x: number;
+  y: number;
+};
+
 const FRAME_WIDTH = 192;
 const FRAME_HEIGHT = 208;
 const MAX_FRAME_COUNT = 8;
@@ -64,6 +69,17 @@ let frame = 0;
 let lastFrameAt = 0;
 let temporaryStateUntil = 0;
 let animationRequest = 0;
+let pendingDragPointerId: number | null = null;
+let drag: {
+  pointerId: number;
+  startScreenX: number;
+  startScreenY: number;
+  startWindowX: number;
+  startWindowY: number;
+  lastScreenX: number;
+  moved: boolean;
+} | null = null;
+let suppressClickUntil = 0;
 let visibleFramesByRow = new Map<number, number[]>([
   [STATE_ROWS.idle, [0]]
 ]);
@@ -74,6 +90,9 @@ function setMessage(text: string) {
 }
 
 function setState(nextState: PetState, durationMs = 0) {
+  if (state === nextState && durationMs === 0) {
+    return;
+  }
   state = nextState;
   frame = 0;
   temporaryStateUntil = durationMs > 0 ? performance.now() + durationMs : 0;
@@ -188,12 +207,97 @@ async function loadPet() {
 }
 
 canvas.addEventListener("click", () => {
+  if (performance.now() < suppressClickUntil) {
+    return;
+  }
   setState("waving", 1600);
 });
 
 canvas.addEventListener("dblclick", () => {
+  if (performance.now() < suppressClickUntil) {
+    return;
+  }
   setState("jumping", 1300);
 });
+
+canvas.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) {
+    return;
+  }
+
+  event.preventDefault();
+  canvas.setPointerCapture(event.pointerId);
+  pendingDragPointerId = event.pointerId;
+
+  void invoke<WindowPosition>("pet_window_position")
+    .then((position) => {
+      if (pendingDragPointerId !== event.pointerId) {
+        return;
+      }
+
+      drag = {
+        pointerId: event.pointerId,
+        startScreenX: event.screenX,
+        startScreenY: event.screenY,
+        startWindowX: position.x,
+        startWindowY: position.y,
+        lastScreenX: event.screenX,
+        moved: false
+      };
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+});
+
+canvas.addEventListener("pointermove", (event) => {
+  if (!drag || event.pointerId !== drag.pointerId) {
+    if (pendingDragPointerId === event.pointerId) {
+      pendingDragPointerId = null;
+    }
+    return;
+  }
+
+  const deltaX = event.screenX - drag.startScreenX;
+  const deltaY = event.screenY - drag.startScreenY;
+  if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+    drag.moved = true;
+  }
+
+  const directionDelta = event.screenX - drag.lastScreenX;
+  if (directionDelta > 0) {
+    setState("running-right");
+  } else if (directionDelta < 0) {
+    setState("running-left");
+  }
+  drag.lastScreenX = event.screenX;
+
+  void invoke<void>("move_pet_window", {
+    x: Math.round(drag.startWindowX + deltaX),
+    y: Math.round(drag.startWindowY + deltaY)
+  });
+});
+
+function finishDrag(event: PointerEvent) {
+  if (!drag || event.pointerId !== drag.pointerId) {
+    return;
+  }
+
+  if (drag.moved) {
+    suppressClickUntil = performance.now() + 250;
+  }
+
+  drag = null;
+  pendingDragPointerId = null;
+  setState("idle");
+
+  if (canvas.hasPointerCapture(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+}
+
+canvas.addEventListener("pointerup", finishDrag);
+canvas.addEventListener("pointercancel", finishDrag);
 
 canvas.addEventListener("contextmenu", (event) => {
   event.preventDefault();

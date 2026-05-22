@@ -31,6 +31,7 @@ src-tauri/target/release/bundle/macos/kai.app
 
 ## Controls
 
+- Drag: move the pet and play left/right running animations
 - Click: wave
 - Double-click: jump
 - Right-click: quit
