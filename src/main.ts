@@ -4,6 +4,12 @@ type TauriGlobal = {
   core?: {
     invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
   };
+  event?: {
+    listen<T>(
+      event: string,
+      handler: (event: { payload: T }) => void
+    ): Promise<() => void>;
+  };
 };
 
 type PetAsset = {
@@ -22,6 +28,7 @@ const FRAME_WIDTH = 192;
 const FRAME_HEIGHT = 208;
 const MAX_FRAME_COUNT = 8;
 const FRAME_MS = 140;
+const KEYBOARD_ACTIVE_IDLE_MS = 450;
 const STATE_ROWS = {
   idle: 0,
   "running-right": 1,
@@ -81,6 +88,8 @@ let lastFrameAt = 0;
 let temporaryStateUntil = 0;
 let animationRequest = 0;
 let oneShotAnimation: { state: PetState; onComplete: () => void } | null = null;
+let unlistenKeyboardActivity: (() => void) | null = null;
+let keyboardActiveUntil = 0;
 let pendingDragPointerId: number | null = null;
 let drag: {
   pointerId: number;
@@ -133,9 +142,42 @@ function requestQuit() {
   });
 }
 
+function shouldApplyKeyboardActivity() {
+  return drag === null && oneShotAnimation === null && temporaryStateUntil === 0;
+}
+
+function markKeyboardActivity() {
+  keyboardActiveUntil = performance.now() + KEYBOARD_ACTIVE_IDLE_MS;
+  if (shouldApplyKeyboardActivity()) {
+    setState("running");
+  }
+}
+
+async function listenForKeyboardActivity() {
+  const tauri = (window as Window & { __TAURI__?: TauriGlobal }).__TAURI__;
+  if (!tauri?.event?.listen) {
+    return;
+  }
+
+  unlistenKeyboardActivity = await tauri.event.listen("keyboard-activity", () => {
+    markKeyboardActivity();
+  });
+}
+
 function draw(now: number) {
   if (temporaryStateUntil > 0 && now > temporaryStateUntil) {
     temporaryStateUntil = 0;
+    setState("idle");
+  }
+
+  if (
+    state === "running" &&
+    oneShotAnimation === null &&
+    drag === null &&
+    keyboardActiveUntil > 0 &&
+    now > keyboardActiveUntil
+  ) {
+    keyboardActiveUntil = 0;
     setState("idle");
   }
 
@@ -361,8 +403,12 @@ window.addEventListener("keydown", (event) => {
 });
 
 void loadPet();
+void listenForKeyboardActivity();
 animationRequest = requestAnimationFrame(draw);
 
 window.addEventListener("beforeunload", () => {
   cancelAnimationFrame(animationRequest);
+  if (unlistenKeyboardActivity !== null) {
+    unlistenKeyboardActivity();
+  }
 });

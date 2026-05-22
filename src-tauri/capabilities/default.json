@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Default permissions for the desktop pet window.",
   "windows": ["pet"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "core:event:allow-listen", "core:event:allow-unlisten"]
 }
