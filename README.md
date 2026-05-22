@@ -34,6 +34,6 @@ src-tauri/target/release/bundle/macos/kai.app
 - Drag: move the pet and play left/right running animations
 - Click: wave
 - Double-click: jump
-- Right-click: quit
-- `Esc` or `q`: quit
+- Right-click: disabled
+- `Esc` or `q`: play the failed animation, then quit
 - `1`-`5`: switch test states

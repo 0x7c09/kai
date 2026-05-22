@@ -22,6 +22,7 @@ const FRAME_WIDTH = 192;
 const FRAME_HEIGHT = 208;
 const MAX_FRAME_COUNT = 8;
 const FRAME_MS = 140;
+const EXIT_ANIMATION_MS = 900;
 const STATE_ROWS = {
   idle: 0,
   "running-right": 1,
@@ -69,6 +70,7 @@ let frame = 0;
 let lastFrameAt = 0;
 let temporaryStateUntil = 0;
 let animationRequest = 0;
+let quitTimer: number | null = null;
 let pendingDragPointerId: number | null = null;
 let drag: {
   pointerId: number;
@@ -96,6 +98,21 @@ function setState(nextState: PetState, durationMs = 0) {
   state = nextState;
   frame = 0;
   temporaryStateUntil = durationMs > 0 ? performance.now() + durationMs : 0;
+}
+
+function requestQuit() {
+  if (quitTimer !== null) {
+    return;
+  }
+
+  drag = null;
+  pendingDragPointerId = null;
+  suppressClickUntil = performance.now() + EXIT_ANIMATION_MS;
+  setState("failed");
+
+  quitTimer = window.setTimeout(() => {
+    void invoke<void>("quit_app");
+  }, EXIT_ANIMATION_MS);
 }
 
 function draw(now: number) {
@@ -301,18 +318,32 @@ canvas.addEventListener("pointercancel", finishDrag);
 
 canvas.addEventListener("contextmenu", (event) => {
   event.preventDefault();
-  void invoke<void>("quit_app");
 });
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape" || event.key.toLowerCase() === "q") {
-    void invoke<void>("quit_app");
+    requestQuit();
+    return;
   }
-  if (event.key === "1") setState("idle");
-  if (event.key === "2") setState("running");
-  if (event.key === "3") setState("waiting");
-  if (event.key === "4") setState("review");
-  if (event.key === "5") setState("failed");
+  if (event.key === "1") {
+    setState("idle");
+    return;
+  }
+  if (event.key === "2") {
+    setState("running");
+    return;
+  }
+  if (event.key === "3") {
+    setState("waiting");
+    return;
+  }
+  if (event.key === "4") {
+    setState("review");
+    return;
+  }
+  if (event.key === "5") {
+    setState("failed");
+  }
 });
 
 void loadPet();
